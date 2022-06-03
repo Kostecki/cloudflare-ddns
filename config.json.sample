@@ -1,0 +1,11 @@
+{
+  "endpoint": "https://api.cloudflare.com/client/v4/zones",
+  "apikey": "",
+  "zones": [
+    {
+      "domain": "",
+      "zoneId": "",
+      "dnsRecordId": ""
+    },
+  ]
+}
