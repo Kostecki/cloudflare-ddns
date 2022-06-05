@@ -1,11 +1,13 @@
 {
-  "endpoint": "https://api.cloudflare.com/client/v4/zones",
-  "apikey": "",
-  "zones": [
+  "cf_endpoint": "https://api.cloudflare.com/client/v4/zones",
+  "cf_apikey": "",
+  "cf_zones": [
     {
       "domain": "",
       "zoneId": "",
       "dnsRecordId": ""
     },
-  ]
+  ],
+  "tg_apikey": "",
+  "tg_chatId": ""
 }
