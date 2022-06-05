@@ -3,29 +3,57 @@
 const rawConfig = await fs.readFile("./config.json");
 const config = JSON.parse(rawConfig);
 
-const headerOptions = {
+const cf_headerOptions = {
   method: "GET",
   headers: {
-    Authorization: `Bearer ${config.apikey}`,
+    Authorization: `Bearer ${config.cf_apikey}`,
     "Content-Type": "application/json",
   },
 };
 
+const tg_headerOptions = {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: {
+    chat_id: config.tg_chatId,
+    parse_mode: "HTML",
+  },
+};
+
+const sendNotification = async (text) => {
+  const body = JSON.stringify({ ...tg_headerOptions.body, text });
+
+  return await fetch(
+    `https://api.telegram.org/bot${config.tg_apikey}/sendMessage`,
+    { ...tg_headerOptions, body }
+  )
+    .then((resp) => {
+      if (!resp.ok) {
+        throw resp;
+      }
+    })
+    .catch((error) => {
+      error.json().then(({ description }) => {
+        console.error(description);
+      });
+    });
+};
+
 const getExternalIP = async () => {
-  return await fetch("https://icanhazip.com")
+  await fetch("https://icanhazip.com")
     .then((response) => response.text())
-    .then((data) => data.trim())
-    .catch((err) => console.error(err));
+    .then((data) => data.trim());
 };
 
 const getCloudflareIP = async () => {
   return await fetch(
-    `${config.endpoint}/${config.zones[0].zoneId}/dns_records?type=A`,
-    headerOptions
+    `${config.cf_endpoint}/${config.cf_zones[0].zoneId}/dns_records?type=A`,
+    cf_headerOptions
   )
     .then((response) => response.json())
-    .then((data) => data.result[0].content.trim())
-    .catch((err) => console.error(err));
+    .then((data) => data.result[0].content.trim());
 };
 
 const updateDNS = async () => {
@@ -33,17 +61,38 @@ const updateDNS = async () => {
   const cloudflareIP = await getCloudflareIP();
 
   // IP mismatch. Update Cloudflare records
-  if (externalIP !== cloudflareIP) {
-    zones.forEach((zone) => {
-      const url = `${config.endpoint}/${zone.zoneId}/dns_records/${zone.dnsRecordId}`;
+  if (externalIP && cloudflareIP && externalIP !== cloudflareIP) {
+    const requests = Promise.all(
+      config.cf_zones.map((zone) => {
+        const url = `${config.cf_endpoint}/${zone.zoneId}/dns_records/${zone.dnsRecordId}`;
 
-      fetch(url, {
-        ...headerOptions,
-        method: "PATCH",
-        body: JSON.stringify({
-          content: externalIP,
-        }),
-      }).catch((err) => console.error(err));
+        return new Promise((resolve) => {
+          fetch(url, {
+            ...cf_headerOptions,
+            method: "PATCH",
+            body: JSON.stringify({
+              content: externalIP,
+            }),
+          })
+            .then((resp) => {
+              if (resp.status !== 200) {
+                throw resp;
+              }
+
+              return resp.json();
+            })
+            .then(() => resolve())
+            .catch(({ statusText }) => {
+              console.error(`updateDNS, ${zone.domain}: ${statusText}`);
+            });
+        });
+      })
+    );
+
+    requests.then(() => {
+      sendNotification(
+        `<b>Cloudflare DDNS</b> \nNew IP: ${cloudflareIP} => ${externalIP}`
+      );
     });
   }
 };
