@@ -42,7 +42,7 @@ const sendNotification = async (text) => {
 };
 
 const getExternalIP = async () => {
-  await fetch("https://icanhazip.com")
+  return await fetch("https://icanhazip.com")
     .then((response) => response.text())
     .then((data) => data.trim());
 };
