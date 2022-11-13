@@ -11,33 +11,33 @@ const cf_headerOptions = {
   },
 };
 
-const tg_headerOptions = {
+const ntfy_headerOptions = {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-  },
-  body: {
-    chat_id: config.tg_chatId,
-    parse_mode: "HTML",
+    Authorization: `Basic ${config.ntfy_auth}`,
   },
 };
 
-const sendNotification = async (text) => {
-  const body = JSON.stringify({ ...tg_headerOptions.body, text });
+const sendNotification = async (message) => {
+  const body = JSON.stringify({
+    topic: "Tower",
+    tags: ["cloud"],
+    title: "DDNS IP Change",
+    message,
+  });
 
-  return await fetch(
-    `https://api.telegram.org/bot${config.tg_apikey}/sendMessage`,
-    { ...tg_headerOptions, body }
-  )
+  return await fetch(`${config.ntfy_url}`, {
+    ...ntfy_headerOptions,
+    body: body,
+  })
     .then((resp) => {
       if (!resp.ok) {
         throw resp;
       }
     })
     .catch((error) => {
-      error.json().then(({ description }) => {
-        console.error(description);
-      });
+      console.error(error);
     });
 };
 
@@ -90,9 +90,8 @@ const updateDNS = async () => {
     );
 
     requests.then(() => {
-      sendNotification(
-        `<b>Cloudflare DDNS</b> \nNew IP: ${cloudflareIP} => ${externalIP}`
-      );
+      sendNotification(`New: ${externalIP}
+      Old: ${cloudflareIP}`);
     });
   }
 };
